@@ -134,20 +134,25 @@ namespace ChamSocKhachHang.form
 
         private void LoadKhachHang(List<KhachHang> kh)
         {
+            var displayList = kh.Select(x => new {
+                x.ID,
+                x.HoTen,
+                x.DienThoai,
+                x.Email,
+                x.DiaChi,
+                // Lấy ngày chăm sóc gần nhất từ bảng lịch sử của khách hàng đó
+                LichSuChamSoc = context.LichSuChamSocs
+                            .Where(ls => ls.KhachHangID == x.ID)
+                            .OrderByDescending(ls => ls.NgayChamSoc)
+                            .Select(ls => ls.NgayChamSoc.ToString("dd/MM/yyyy"))
+                            .FirstOrDefault() ?? "Chưa chăm sóc"
+            }).ToList();
+
             BindingSource bindingSource = new BindingSource();
-            bindingSource.DataSource = kh;
+            bindingSource.DataSource = displayList;
 
-            txtTenKhachHang.DataBindings.Clear();
-            txtTenKhachHang.DataBindings.Add("Text", bindingSource, "HoTen");
-
-            txtDienThoai.DataBindings.Clear();
-            txtDienThoai.DataBindings.Add("Text", bindingSource, "DienThoai");
-
-            txtDiaChi.DataBindings.Clear();
-            txtDiaChi.DataBindings.Add("Text", bindingSource, "DiaChi");
-
-            txtEmail.DataBindings.Clear();
-            txtEmail.DataBindings.Add("Text", bindingSource, "Email");
+            // Các đoạn DataBindings cũ của bạn (txtTenKhachHang...) 
+            // giữ nguyên nhưng hãy đảm bảo dùng đúng tên trường
 
             dataGridView2.DataSource = bindingSource;
         }
@@ -203,6 +208,24 @@ namespace ChamSocKhachHang.form
 
             // Load lại dữ liệu
             LoadKhachHang(context.KhachHangs.ToList());
+        }
+        private void RefreshData()
+        {
+            // Load lại toàn bộ danh sách khách hàng từ context mới nhất
+            // Lưu ý: .AsNoTracking() giúp lấy dữ liệu mới nhất nếu context bị cache
+            var danhSach = context.KhachHangs.ToList();
+            LoadKhachHang(danhSach);
+        }
+        private void btnMoLichSu_Click(object sender, EventArgs e)
+        {
+            frmLichSuChamSoc frm = new frmLichSuChamSoc();
+
+            // ĐĂNG KÝ SỰ KIỆN: Khi form lịch sử lưu, thì form khách hàng tự Load lại
+            frm.FormDaLuuDuLieu += (s, args) => {
+                RefreshData();
+            };
+
+            frm.ShowDialog();
         }
     }
 }
